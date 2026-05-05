@@ -70,7 +70,9 @@ export const useLocation = () => {
       setLocation(currentPos.coords);
 
       // 4) Start continuous watcher (10m distance filter → battery friendly)
-      if (watcherRef.current) watcherRef.current.remove();
+      if (watcherRef.current) {
+        try { watcherRef.current.remove(); } catch(e) {}
+      }
       watcherRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
@@ -108,7 +110,9 @@ export const useLocation = () => {
     checkAndRequestLocation();
     return () => {
       clearTimeout(timeoutRef.current);
-      if (watcherRef.current) watcherRef.current.remove();
+      if (watcherRef.current) {
+        try { watcherRef.current.remove(); } catch(e) {}
+      }
     };
   }, [checkAndRequestLocation]);
 

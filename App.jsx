@@ -19,8 +19,9 @@
  */
 
 import React, { memo } from 'react';
-import { SafeAreaView, StyleSheet, Platform } from 'react-native';
+import { SafeAreaView, StyleSheet, Platform, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { useLocation } from './src/hooks/useLocation';
 import LoadingScreen from './src/components/LoadingScreen';
@@ -40,33 +41,35 @@ const App = memo(() => {
   // ── 1. Still checking permissions / getting first GPS fix ─────────────────
   if (isLoading) {
     return (
-      <>
+      <SafeAreaProvider>
         <StatusBar style="light" />
         <LoadingScreen />
-      </>
+      </SafeAreaProvider>
     );
   }
 
   // ── 2. GPS off or permission denied — hard block ──────────────────────────
   if (locationBlocked) {
     return (
-      <>
+      <SafeAreaProvider>
         <StatusBar style="light" />
         <LocationBlocker
           locationServicesEnabled={locationServicesEnabled}
           permissionStatus={permissionStatus}
           onRetry={retry}
         />
-      </>
+      </SafeAreaProvider>
     );
   }
 
   // ── 3. All clear — render the map ─────────────────────────────────────────
   return (
-    <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
-      <MapScreen userLocation={location} />
-    </SafeAreaView>
+    <SafeAreaProvider>
+      <View style={styles.root}>
+        <StatusBar style="light" />
+        <MapScreen userLocation={location} />
+      </View>
+    </SafeAreaProvider>
   );
 });
 

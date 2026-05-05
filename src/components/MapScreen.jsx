@@ -15,14 +15,16 @@
  * react-native-maps 1.20.1 on Expo SDK 54. Using native MapView directly.
  */
 
-import React, { useState, useMemo, useCallback, memo } from 'react';
+import React, { useState, useMemo, useCallback, memo, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
-import MapView, { PROVIDER_DEFAULT, Circle, UrlTile } from 'react-native-maps';
+import MapView, { PROVIDER_DEFAULT, Circle, UrlTile, Marker } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 
 import { generateCrowdData, DENSITY } from '../data/mockData';
 import CrowdMarker from './CrowdMarker';
 import VenueDetailSheet from './VenueDetailSheet';
 import Header from './Header';
+import SearchBar from './SearchBar';
 import LegendBar from './LegendBar';
 
 // Default region: Chennai city centre
@@ -37,11 +39,39 @@ const MapScreen = memo(({ userLocation }) => {
   // Generate data ONCE — useMemo ensures no re-computation on re-renders
   const crowdData = useMemo(() => generateCrowdData(), []);
 
+  const mapRef = useRef(null);
+
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [globalMarker, setGlobalMarker] = useState(null);
 
   // Stable callback — useCallback prevents marker children from re-rendering
   const handleMarkerPress = useCallback((venue) => {
+    if (venue.isGlobal) {
+      setGlobalMarker(venue.coordinate);
+      setSelectedVenue(null);
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: venue.coordinate.latitude,
+          longitude: venue.coordinate.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        }, 1000);
+      }
+      return;
+    }
+
+    setGlobalMarker(null);
     setSelectedVenue(venue);
+    
+    // Pan map to venue when selected
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: venue.coordinate.latitude - 0.005, // offset so it's not hidden by bottom sheet
+        longitude: venue.coordinate.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 500);
+    }
   }, []);
 
   const handleSheetClose = useCallback(() => {
@@ -77,7 +107,10 @@ const MapScreen = memo(({ userLocation }) => {
         lowCount={lowCount}
       />
 
+      <SearchBar data={crowdData} onSelect={handleMarkerPress} />
+
       <MapView
+        ref={mapRef}
         style={styles.map}
         provider={PROVIDER_DEFAULT}
         initialRegion={initialRegion}
@@ -126,6 +159,15 @@ const MapScreen = memo(({ userLocation }) => {
             onPress={handleMarkerPress}
           />
         ))}
+
+        {/* Global Search Marker */}
+        {globalMarker && (
+          <Marker coordinate={globalMarker}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="location" size={44} color="#FF3B30" />
+            </View>
+          </Marker>
+        )}
       </MapView>
 
       {/* Bottom legend */}

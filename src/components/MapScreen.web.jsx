@@ -12,11 +12,11 @@ import React, { useState, useMemo, useCallback, memo, useEffect } from 'react';
 import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css'; // Requires leaflet css
 
 import { generateCrowdData, DENSITY, DENSITY_CONFIG } from '../data/mockData';
 import VenueDetailSheet from './VenueDetailSheet';
 import Header from './Header';
+import SearchBar from './SearchBar';
 import LegendBar from './LegendBar';
 
 // Default region: Chennai city centre
@@ -48,9 +48,48 @@ const customIcons = {
   [DENSITY.LOW]: createCustomIcon(DENSITY.LOW),
 };
 
+const MapController = ({ panTarget }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (panTarget) {
+      const isGlobal = panTarget.isGlobal;
+      const lat = isGlobal ? panTarget.coordinate.latitude : panTarget.coordinate.latitude - 0.005;
+      const lon = panTarget.coordinate.longitude;
+      const zoom = isGlobal ? 16 : 15; // Zoom in very close for global!
+      
+      map.flyTo([lat, lon], zoom, {
+        animate: true,
+        duration: 1.5,
+      });
+    }
+  }, [panTarget, map]);
+  return null;
+};
+
 const MapScreenWeb = memo(({ userLocation }) => {
+  // Inject Leaflet CSS dynamically to bypass Metro Bundler CSS static asset limitations
+  useEffect(() => {
+    if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+  }, []);
+
   const crowdData = useMemo(() => generateCrowdData(), []);
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [panTarget, setPanTarget] = useState(null);
+
+  const handleSearchSelect = useCallback((venue) => {
+    setPanTarget(venue);
+    if (venue.isGlobal) {
+      setSelectedVenue(null);
+    } else {
+      setSelectedVenue(venue);
+    }
+  }, []);
 
   const handleSheetClose = useCallback(() => {
     setSelectedVenue(null);
@@ -72,6 +111,7 @@ const MapScreenWeb = memo(({ userLocation }) => {
   return (
     <View style={styles.container}>
       <Header highCount={highCount} mediumCount={mediumCount} lowCount={lowCount} />
+      <SearchBar data={crowdData} onSelect={handleSearchSelect} />
 
       {/* Leaflet Map for Web */}
       <View style={styles.mapWrapper}>
@@ -101,10 +141,20 @@ const MapScreenWeb = memo(({ userLocation }) => {
               position={[venue.coordinate.latitude, venue.coordinate.longitude]}
               icon={customIcons[venue.density]}
               eventHandlers={{
-                click: () => setSelectedVenue(venue),
+                click: () => {
+                  setPanTarget(venue);
+                  setSelectedVenue(venue);
+                },
               }}
             />
           ))}
+
+          {/* Global Search Marker */}
+          {panTarget && panTarget.isGlobal && (
+            <Marker position={[panTarget.coordinate.latitude, panTarget.coordinate.longitude]} />
+          )}
+
+          <MapController panTarget={panTarget} />
         </MapContainer>
       </View>
 
