@@ -65,10 +65,7 @@ const VenueDetailSheet = memo(({ venue, onClose }) => {
       </Animated.View>
       <Animated.View style={[styles.sheet, { transform: [{ translateY: slideAnim }] }]}>
         <View style={styles.handle} />
-        <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
-          <Text style={styles.closeBtnText}>✕</Text>
-        </TouchableOpacity>
-        <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+        <ScrollView showsVerticalScrollIndicator={false} bounces={false} contentContainerStyle={{ paddingTop: 10 }}>
           <View style={styles.headerRow}>
             <View style={[styles.densityBadge, { backgroundColor: config.color + '22', borderColor: config.color + '55' }]}>
               <Ionicons name={config.icon} size={14} color={config.color} />
@@ -116,6 +113,9 @@ const VenueDetailSheet = memo(({ venue, onClose }) => {
             ))}
           </View>
         </ScrollView>
+        <TouchableOpacity style={styles.closeBtn} onPress={handleClose}>
+          <Ionicons name="close" size={20} color="rgba(255,255,255,0.8)" />
+        </TouchableOpacity>
       </Animated.View>
     </>
   );
@@ -132,9 +132,8 @@ const styles = StyleSheet.create({
     borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     shadowColor: '#000', shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.6, shadowRadius: 24, elevation: 30,
   },
-  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 12 },
-  closeBtn: { position: 'absolute', right: 20, top: 20, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
-  closeBtnText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '700' },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 4 },
+  closeBtn: { position: 'absolute', right: 16, top: 16, width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center', zIndex: 100 },
   headerRow: { flexDirection: 'row', gap: 8, marginBottom: 10, marginTop: 4, flexWrap: 'wrap' },
   densityBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   densityBadgeText: { fontSize: 12, fontWeight: '700' },

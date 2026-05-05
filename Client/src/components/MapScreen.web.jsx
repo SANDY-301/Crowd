@@ -9,14 +9,14 @@
  */
 
 import React, { useState, useMemo, useCallback, memo, useEffect } from 'react';
-import { View, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Text, TouchableOpacity, Platform } from 'react-native';
 import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css'; // Requires leaflet css
 
-import { generateCrowdData, DENSITY, DENSITY_CONFIG } from '../data/mockData';
+import { DENSITY, DENSITY_CONFIG } from '../data/mockData';
 import VenueDetailSheet from './VenueDetailSheet';
 import Header from './Header';
+import SearchBar from './SearchBar';
 import LegendBar from './LegendBar';
 
 // Default region: Chennai city centre
@@ -24,6 +24,8 @@ const INITIAL_REGION = {
   latitude: 13.0407,
   longitude: 80.2337,
 };
+
+const API_URL = Platform.OS === 'android' ? 'http://10.0.2.2:5000' : 'http://localhost:5000';
 
 // Create custom icons using SVG data URIs for Leaflet
 const createCustomIcon = (density) => {
@@ -48,18 +50,87 @@ const customIcons = {
   [DENSITY.LOW]: createCustomIcon(DENSITY.LOW),
 };
 
+const MapController = ({ panTarget }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (panTarget) {
+      const isGlobal = panTarget.isGlobal;
+      const lat = isGlobal ? panTarget.coordinate.latitude : panTarget.coordinate.latitude - 0.005;
+      const lon = panTarget.coordinate.longitude;
+      const zoom = isGlobal ? 16 : 15; // Zoom in very close for global!
+
+      map.flyTo([lat, lon], zoom, {
+        animate: true,
+        duration: 1.5,
+      });
+    }
+  }, [panTarget, map]);
+  return null;
+};
+
 const MapScreenWeb = memo(({ userLocation }) => {
-  const crowdData = useMemo(() => generateCrowdData(), []);
+  // Inject Leaflet CSS dynamically to bypass Metro Bundler CSS static asset limitations
+  useEffect(() => {
+    if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+  }, []);
+
+  const [crowdData, setCrowdData] = useState([]);
+
+  // Fetch Live Data from Backend every 10 seconds
+  const fetchLiveCrowds = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/crowds`);
+      const json = await res.json();
+      if (json.success) {
+        const mapped = json.data.map((user) => ({
+          id: user.id,
+          name: 'Active App User',
+          coordinate: { latitude: user.latitude, longitude: user.longitude },
+          density: DENSITY.LOW,
+          crowdCount: 1,
+          type: 'leisure',
+          lastUpdated: user.lastUpdated,
+          prediction: 'Real-time location data',
+        }));
+        setCrowdData(mapped);
+      }
+    } catch (e) {
+      console.log('Error fetching live crowds:', e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveCrowds(); // Initial fetch
+    const interval = setInterval(fetchLiveCrowds, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, [fetchLiveCrowds]);
+
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [panTarget, setPanTarget] = useState(null);
+
+  const handleSearchSelect = useCallback((venue) => {
+    setPanTarget(venue);
+    if (venue.isGlobal) {
+      setSelectedVenue(null);
+    } else {
+      setSelectedVenue(venue);
+    }
+  }, []);
 
   const handleSheetClose = useCallback(() => {
     setSelectedVenue(null);
   }, []);
 
   const { highCount, mediumCount, lowCount } = useMemo(() => ({
-    highCount:   crowdData.filter(v => v.density === DENSITY.HIGH).length,
+    highCount: crowdData.filter(v => v.density === DENSITY.HIGH).length,
     mediumCount: crowdData.filter(v => v.density === DENSITY.MEDIUM).length,
-    lowCount:    crowdData.filter(v => v.density === DENSITY.LOW).length,
+    lowCount: crowdData.filter(v => v.density === DENSITY.LOW).length,
   }), [crowdData]);
 
   const initialCenter = useMemo(() => {
@@ -72,13 +143,14 @@ const MapScreenWeb = memo(({ userLocation }) => {
   return (
     <View style={styles.container}>
       <Header highCount={highCount} mediumCount={mediumCount} lowCount={lowCount} />
+      <SearchBar data={crowdData} onSelect={handleSearchSelect} />
 
       {/* Leaflet Map for Web */}
       <View style={styles.mapWrapper}>
-        <MapContainer 
-          center={initialCenter} 
-          zoom={13} 
-          scrollWheelZoom={true} 
+        <MapContainer
+          center={initialCenter}
+          zoom={13}
+          scrollWheelZoom={true}
           style={{ height: '100%', width: '100%', backgroundColor: '#070714' }}
         >
           {/* OpenStreetMap 100% Free Tiles */}
@@ -101,10 +173,20 @@ const MapScreenWeb = memo(({ userLocation }) => {
               position={[venue.coordinate.latitude, venue.coordinate.longitude]}
               icon={customIcons[venue.density]}
               eventHandlers={{
-                click: () => setSelectedVenue(venue),
+                click: () => {
+                  setPanTarget(venue);
+                  setSelectedVenue(venue);
+                },
               }}
             />
           ))}
+
+          {/* Global Search Marker */}
+          {panTarget && panTarget.isGlobal && (
+            <Marker position={[panTarget.coordinate.latitude, panTarget.coordinate.longitude]} />
+          )}
+
+          <MapController panTarget={panTarget} />
         </MapContainer>
       </View>
 

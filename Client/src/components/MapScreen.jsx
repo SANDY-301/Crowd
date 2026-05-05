@@ -15,14 +15,17 @@
  * react-native-maps 1.20.1 on Expo SDK 54. Using native MapView directly.
  */
 
-import React, { useState, useMemo, useCallback, memo } from 'react';
-import { View, StyleSheet } from 'react-native';
-import MapView, { PROVIDER_DEFAULT, Circle, UrlTile } from 'react-native-maps';
+import React, { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
+import MapView, { PROVIDER_DEFAULT, Circle, UrlTile, Marker } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
-import { generateCrowdData, DENSITY } from '../data/mockData';
+import { DENSITY } from '../data/mockData';
 import CrowdMarker from './CrowdMarker';
 import VenueDetailSheet from './VenueDetailSheet';
 import Header from './Header';
+import SearchBar from './SearchBar';
 import LegendBar from './LegendBar';
 
 // Default region: Chennai city centre
@@ -33,15 +36,76 @@ const INITIAL_REGION = {
   longitudeDelta: 0.25,
 };
 
+const hostUri = Constants.expoConfig?.hostUri;
+const localIp = hostUri ? hostUri.split(':')[0] : '10.0.2.2';
+const API_URL = Platform.OS === 'web' ? 'http://localhost:5000' : `http://${localIp}:5000`;
+
 const MapScreen = memo(({ userLocation }) => {
-  // Generate data ONCE — useMemo ensures no re-computation on re-renders
-  const crowdData = useMemo(() => generateCrowdData(), []);
+  const [crowdData, setCrowdData] = useState([]);
+
+  // Fetch Live Data from Backend every 10 seconds
+  const fetchLiveCrowds = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/crowds`);
+      const json = await res.json();
+      if (json.success) {
+        // Map backend generic data to our UI format
+        const mapped = json.data.map((user) => ({
+          id: user.id,
+          name: 'Active App User',
+          coordinate: { latitude: user.latitude, longitude: user.longitude },
+          density: DENSITY.LOW, // 1 person
+          crowdCount: 1,
+          type: 'leisure',
+          lastUpdated: user.lastUpdated,
+          prediction: 'Real-time location data',
+        }));
+        setCrowdData(mapped);
+      }
+    } catch (e) {
+      console.log('Error fetching live crowds:', e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveCrowds(); // Initial fetch
+    const interval = setInterval(fetchLiveCrowds, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, [fetchLiveCrowds]);
+
+  const mapRef = useRef(null);
 
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [globalMarker, setGlobalMarker] = useState(null);
 
   // Stable callback — useCallback prevents marker children from re-rendering
   const handleMarkerPress = useCallback((venue) => {
+    if (venue.isGlobal) {
+      setGlobalMarker(venue.coordinate);
+      setSelectedVenue(null);
+      if (mapRef.current) {
+        mapRef.current.animateToRegion({
+          latitude: venue.coordinate.latitude,
+          longitude: venue.coordinate.longitude,
+          latitudeDelta: 0.005,
+          longitudeDelta: 0.005,
+        }, 1000);
+      }
+      return;
+    }
+
+    setGlobalMarker(null);
     setSelectedVenue(venue);
+
+    // Pan map to venue when selected
+    if (mapRef.current) {
+      mapRef.current.animateToRegion({
+        latitude: venue.coordinate.latitude - 0.005, // offset so it's not hidden by bottom sheet
+        longitude: venue.coordinate.longitude,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      }, 500);
+    }
   }, []);
 
   const handleSheetClose = useCallback(() => {
@@ -50,9 +114,9 @@ const MapScreen = memo(({ userLocation }) => {
 
   // Derived counts — computed once, not inside child components
   const { highCount, mediumCount, lowCount } = useMemo(() => ({
-    highCount:   crowdData.filter(v => v.density === DENSITY.HIGH).length,
+    highCount: crowdData.filter(v => v.density === DENSITY.HIGH).length,
     mediumCount: crowdData.filter(v => v.density === DENSITY.MEDIUM).length,
-    lowCount:    crowdData.filter(v => v.density === DENSITY.LOW).length,
+    lowCount: crowdData.filter(v => v.density === DENSITY.LOW).length,
   }), [crowdData]);
 
   // Center map on user's live location if available, else use Chennai
@@ -77,7 +141,10 @@ const MapScreen = memo(({ userLocation }) => {
         lowCount={lowCount}
       />
 
+      <SearchBar data={crowdData} onSelect={handleMarkerPress} />
+
       <MapView
+        ref={mapRef}
         style={styles.map}
         provider={PROVIDER_DEFAULT}
         initialRegion={initialRegion}
@@ -126,6 +193,15 @@ const MapScreen = memo(({ userLocation }) => {
             onPress={handleMarkerPress}
           />
         ))}
+
+        {/* Global Search Marker */}
+        {globalMarker && (
+          <Marker coordinate={globalMarker}>
+            <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="location" size={44} color="#FF3B30" />
+            </View>
+          </Marker>
+        )}
       </MapView>
 
       {/* Bottom legend */}
