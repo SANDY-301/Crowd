@@ -7,6 +7,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   Animated, Dimensions, ScrollView, Easing,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { DENSITY, DENSITY_CONFIG } from '../data/mockData';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -45,7 +46,13 @@ const VenueDetailSheet = memo(({ venue, onClose }) => {
     ]).start(() => onClose());
   }, [onClose]);
 
-  const typeBadgeMap = { transport:'🚉 Transport', mall:'🛍 Mall', market:'🛒 Market', leisure:'🌴 Leisure', hospital:'🏥 Hospital' };
+  const typeBadgeMap = { 
+    transport: { icon: 'train-outline', label: 'Transport' }, 
+    mall: { icon: 'bag-handle-outline', label: 'Mall' }, 
+    market: { icon: 'cart-outline', label: 'Market' }, 
+    leisure: { icon: 'partly-sunny-outline', label: 'Leisure' }, 
+    hospital: { icon: 'medkit-outline', label: 'Hospital' } 
+  };
 
   const formatTime = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -64,15 +71,18 @@ const VenueDetailSheet = memo(({ venue, onClose }) => {
         <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
           <View style={styles.headerRow}>
             <View style={[styles.densityBadge, { backgroundColor: config.color + '22', borderColor: config.color + '55' }]}>
-              <Text style={[styles.densityBadgeText, { color: config.color }]}>{config.emoji} {config.label}</Text>
+              <Ionicons name={config.icon} size={14} color={config.color} />
+              <Text style={[styles.densityBadgeText, { color: config.color }]}>{config.label}</Text>
             </View>
             <View style={styles.typeBadge}>
-              <Text style={styles.typeBadgeText}>{typeBadgeMap[venue.type] || '📍 Place'}</Text>
+              <Ionicons name={venue.type && typeBadgeMap[venue.type] ? typeBadgeMap[venue.type].icon : 'location-outline'} size={12} color="rgba(255,255,255,0.55)" />
+              <Text style={styles.typeBadgeText}>{venue.type && typeBadgeMap[venue.type] ? typeBadgeMap[venue.type].label : 'Place'}</Text>
             </View>
           </View>
           <Text style={styles.venueName}>{venue.name}</Text>
           <View style={styles.countRow}>
-            <Text style={styles.countText}>👥 ~{venue.crowdCount}</Text>
+            <Ionicons name="people" size={18} color="rgba(255,255,255,0.8)" />
+            <Text style={styles.countText}>~{venue.crowdCount}</Text>
             <Text style={styles.liveTag}>LIVE</Text>
           </View>
           <View style={styles.barSection}>
@@ -87,18 +97,19 @@ const VenueDetailSheet = memo(({ venue, onClose }) => {
           </View>
           <View style={[styles.predictionCard, { borderColor: config.color + '44' }]}>
             <View style={styles.predictionHeader}>
-              <Text style={styles.predictionTitle}>🔮  AI Prediction</Text>
+              <Ionicons name="sparkles" size={14} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.predictionTitle}>AI Prediction</Text>
             </View>
             <Text style={[styles.predictionText, { color: config.color }]}>{venue.prediction}</Text>
           </View>
           <View style={styles.statsRow}>
             {[
-              { icon:'🕐', label:'Updated', value: formatTime(venue.lastUpdated) },
-              { icon:'📡', label:'Status', value:'Live', valueColor:'#30D158' },
-              { icon:'🔁', label:'Refresh', value:'5 min' },
+              { icon:'time-outline', label:'Updated', value: formatTime(venue.lastUpdated) },
+              { icon:'radio-outline', label:'Status', value:'Live', valueColor:'#30D158' },
+              { icon:'refresh-outline', label:'Refresh', value:'5 min' },
             ].map((s, i) => (
               <View key={i} style={styles.statCard}>
-                <Text style={styles.statIcon}>{s.icon}</Text>
+                <Ionicons name={s.icon} size={22} color="rgba(255,255,255,0.6)" style={{ marginBottom: 6 }} />
                 <Text style={styles.statLabel}>{s.label}</Text>
                 <Text style={[styles.statValue, s.valueColor && { color: s.valueColor }]}>{s.value}</Text>
               </View>
@@ -125,9 +136,9 @@ const styles = StyleSheet.create({
   closeBtn: { position: 'absolute', right: 20, top: 20, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
   closeBtnText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '700' },
   headerRow: { flexDirection: 'row', gap: 8, marginBottom: 10, marginTop: 4, flexWrap: 'wrap' },
-  densityBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
+  densityBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
   densityBadgeText: { fontSize: 12, fontWeight: '700' },
-  typeBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.07)' },
+  typeBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.07)' },
   typeBadgeText: { fontSize: 12, color: 'rgba(255,255,255,0.55)', fontWeight: '600' },
   venueName: { fontSize: 22, fontWeight: '800', color: '#FFF', marginBottom: 10, letterSpacing: -0.3 },
   countRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 20 },
@@ -140,12 +151,11 @@ const styles = StyleSheet.create({
   barLegend: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   barLegendText: { fontSize: 10, color: 'rgba(255,255,255,0.3)' },
   predictionCard: { backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16, padding: 16, borderWidth: 1, marginBottom: 20 },
-  predictionHeader: { marginBottom: 8 },
+  predictionHeader: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
   predictionTitle: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.8 },
   predictionText: { fontSize: 15, fontWeight: '600', lineHeight: 22 },
   statsRow: { flexDirection: 'row', gap: 10 },
   statCard: { flex: 1, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  statIcon: { fontSize: 20, marginBottom: 4 },
   statLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 4 },
   statValue: { fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: '700' },
 });

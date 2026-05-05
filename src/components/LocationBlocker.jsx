@@ -24,6 +24,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -67,21 +68,23 @@ const LocationBlocker = memo(({ locationServicesEnabled, permissionStatus, onRet
   const subtitle = isGpsOff
     ? 'This app requires live GPS to show crowd density around you.\n\nPlease enable Location Services in your device Settings.'
     : 'This app needs location permission to function.\n\nPlease tap "Try Again" and allow location access when prompted.';
-  const icon = isGpsOff ? '📡' : '🔒';
+  const iconName = isGpsOff ? 'satellite-outline' : 'lock-closed-outline';
 
   return (
     <Animated.View style={[styles.container, { opacity: fadeAnim }]}>
       <StatusBar style="light" />
 
       {/* Background concentric rings for visual depth */}
-      <View style={styles.ring3} />
-      <View style={styles.ring2} />
-      <View style={styles.ring1} />
+      <View style={{ position: 'absolute', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+        <View style={styles.ring3} />
+        <View style={styles.ring2} />
+        <View style={styles.ring1} />
+      </View>
 
       {/* Pulsing icon */}
-      <Animated.Text style={[styles.icon, { transform: [{ scale: pulseAnim }] }]}>
-        {icon}
-      </Animated.Text>
+      <Animated.View style={{ transform: [{ scale: pulseAnim }], marginBottom: 24 }}>
+        <Ionicons name={iconName} size={72} color="#FFF" />
+      </Animated.View>
 
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{subtitle}</Text>
@@ -91,7 +94,10 @@ const LocationBlocker = memo(({ locationServicesEnabled, permissionStatus, onRet
 
       {/* Explanation card */}
       <View style={styles.infoCard}>
-        <Text style={styles.infoTitle}>🗺️  Why is this required?</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <Ionicons name="map-outline" size={16} color="rgba(255,255,255,0.8)" />
+          <Text style={styles.infoTitle}>Why is this required?</Text>
+        </View>
         <Text style={styles.infoText}>
           "Where is the Crowd" tracks live crowd density around your current location.
           Without GPS, we cannot show you real-time data or give accurate predictions.
@@ -105,7 +111,8 @@ const LocationBlocker = memo(({ locationServicesEnabled, permissionStatus, onRet
         activeOpacity={0.8}
         accessibilityLabel="Try Again — re-request location permission"
       >
-        <Text style={styles.buttonText}>🔄  Try Again</Text>
+        <Ionicons name="refresh-outline" size={18} color="#FFF" />
+        <Text style={styles.buttonText}>Try Again</Text>
       </TouchableOpacity>
 
       <Text style={styles.footerNote}>
@@ -135,7 +142,6 @@ const styles = StyleSheet.create({
     borderRadius: 100,
     borderWidth: 1,
     borderColor: 'rgba(255,59,48,0.2)',
-    top: height / 2 - 220,
   },
   ring2: {
     position: 'absolute',
@@ -144,7 +150,6 @@ const styles = StyleSheet.create({
     borderRadius: 140,
     borderWidth: 1,
     borderColor: 'rgba(255,59,48,0.12)',
-    top: height / 2 - 260,
   },
   ring3: {
     position: 'absolute',
@@ -153,13 +158,8 @@ const styles = StyleSheet.create({
     borderRadius: 180,
     borderWidth: 1,
     borderColor: 'rgba(255,59,48,0.06)',
-    top: height / 2 - 300,
   },
 
-  icon: {
-    fontSize: 72,
-    marginBottom: 24,
-  },
   title: {
     fontSize: 26,
     fontWeight: '800',
@@ -194,7 +194,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.8)',
-    marginBottom: 8,
   },
   infoText: {
     fontSize: 13,
@@ -202,6 +201,9 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   button: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     backgroundColor: '#FF3B30',
     paddingVertical: 16,
     paddingHorizontal: 48,

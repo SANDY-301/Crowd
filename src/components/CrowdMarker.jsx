@@ -14,8 +14,9 @@
  */
 
 import React, { memo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Marker } from 'react-native-maps';
+import { Ionicons } from '@expo/vector-icons';
 import { DENSITY_CONFIG } from '../data/mockData';
 
 const CrowdMarker = memo(({ venue, onPress }) => {
@@ -48,7 +49,7 @@ const CrowdMarker = memo(({ venue, onPress }) => {
         <View style={[styles.glowRing, { borderColor: config.glow, backgroundColor: config.glow }]} />
         {/* Inner solid dot */}
         <View style={[styles.dot, { backgroundColor: config.color }]}>
-          <Text style={styles.emoji}>{config.emoji}</Text>
+          <Ionicons name={config.icon} size={16} color="#FFF" />
         </View>
       </View>
     </Marker>
@@ -89,8 +90,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 4,
     elevation: 8,
-  },
-  emoji: {
-    fontSize: 14,
   },
 });
