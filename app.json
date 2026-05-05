@@ -6,6 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "platforms": ["ios", "android", "web"],
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -17,9 +18,6 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "Where is the Crowd needs your location to show real-time crowd density around you.",
         "NSLocationAlwaysUsageDescription": "Where is the Crowd needs your location to show real-time crowd density around you."
-      },
-      "config": {
-        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_IOS_KEY"
       }
     },
     "android": {
@@ -31,16 +29,9 @@
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION"
-      ],
-      "config": {
-        "googleMaps": {
-          "apiKey": "YOUR_GOOGLE_MAPS_ANDROID_KEY"
-        }
-      }
+      ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
+
     "plugins": [
       [
         "expo-location",

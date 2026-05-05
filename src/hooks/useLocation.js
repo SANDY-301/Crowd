@@ -1,17 +1,12 @@
 /**
  * useLocation.js — Aggressive Location Enforcement Hook
  *
- * This hook handles the FULL location lifecycle:
- *  1. Requests foreground location permissions from the user.
- *  2. Checks that the device's GPS/Location Services are actually ON.
- *  3. Starts a continuous location watcher so the app always has fresh coords.
- *  4. Exposes a `locationBlocked` flag — if true, the UI renders a full-screen
- *     blocker, preventing any app interaction until location is granted & active.
- *
- * Why a custom hook?
- *  - Keeps all location logic in one place (single responsibility).
- *  - Components stay clean — they just read { location, locationBlocked, error }.
- *  - The watcher is cleaned up on unmount to prevent memory leaks.
+ * Enforces: GPS ON + permission GRANTED before the map renders.
+ * - Requests foreground location permissions.
+ * - Checks device GPS services are enabled.
+ * - Starts a continuous watcher for live tracking.
+ * - Exposes `locationBlocked` — triggers full-screen blocker if true.
+ * - Has a 10s TIMEOUT safety so the loading spinner never hangs forever.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -20,35 +15,42 @@ import { AppState } from 'react-native';
 
 export const useLocation = () => {
   const [location, setLocation] = useState(null);
-  const [permissionStatus, setPermissionStatus] = useState(null); // 'granted' | 'denied' | 'undetermined'
+  const [permissionStatus, setPermissionStatus] = useState(null);
   const [locationServicesEnabled, setLocationServicesEnabled] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const watcherRef = useRef(null);   // holds the subscription so we can clean it up
+  const watcherRef = useRef(null);
   const appStateRef = useRef(AppState.currentState);
+  const timeoutRef = useRef(null);
 
   // ── Core Permission + Location Check ────────────────────────────────────────
   const checkAndRequestLocation = useCallback(async () => {
     setIsLoading(true);
     setError(null);
 
+    // Safety: 10-second timeout — never leave user on spinning screen
+    timeoutRef.current = setTimeout(() => {
+      setIsLoading(false);
+      setError('Location check timed out. Please try again.');
+    }, 10000);
+
     try {
-      // Step 1: Is the device's GPS hardware/service on at all?
+      // 1) Is device GPS enabled at all?
       const servicesEnabled = await Location.hasServicesEnabledAsync();
       setLocationServicesEnabled(servicesEnabled);
 
       if (!servicesEnabled) {
+        clearTimeout(timeoutRef.current);
         setIsLoading(false);
-        return; // GPS is off — blocker will render
+        return; // GPS is off — show blocker
       }
 
-      // Step 2: Check existing permission status first (avoid redundant prompts)
+      // 2) Check existing permission (avoid redundant prompts)
       const { status: existingStatus } = await Location.getForegroundPermissionsAsync();
-
       let finalStatus = existingStatus;
+
       if (existingStatus !== 'granted') {
-        // Step 3: Request permission — show system dialog
         const { status } = await Location.requestForegroundPermissionsAsync();
         finalStatus = status;
       }
@@ -56,63 +58,61 @@ export const useLocation = () => {
       setPermissionStatus(finalStatus);
 
       if (finalStatus !== 'granted') {
+        clearTimeout(timeoutRef.current);
         setIsLoading(false);
-        return; // Permission denied — blocker will render
+        return; // Permission denied — show blocker
       }
 
-      // Step 4: Get initial fast position
+      // 3) Get initial position (fast, balanced accuracy)
       const currentPos = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       });
       setLocation(currentPos.coords);
 
-      // Step 5: Start continuous watcher for live tracking
-      // Distance filter = 10m so we don't fire updates every millimeter
+      // 4) Start continuous watcher (10m distance filter → battery friendly)
+      if (watcherRef.current) watcherRef.current.remove();
       watcherRef.current = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.Balanced,
-          distanceInterval: 10,      // metres — reduces update frequency
-          timeInterval: 5000,        // minimum 5s between updates (battery friendly)
+          distanceInterval: 10,
+          timeInterval: 5000,
         },
-        (pos) => {
-          setLocation(pos.coords);
-        }
+        (pos) => setLocation(pos.coords)
       );
     } catch (err) {
       setError(err.message || 'Location error occurred');
+      // Even on error, stop loading — show blocker with retry
+      setPermissionStatus('denied');
     } finally {
+      clearTimeout(timeoutRef.current);
       setIsLoading(false);
     }
   }, []);
 
-  // ── App State Listener — Re-check when user returns from Settings ─────────
+  // ── Re-check when app comes back to foreground (user may have changed settings)
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextState) => {
-      // When app comes back to foreground, re-check services & permission
-      // (user may have toggled GPS or changed permission in Settings)
-      if (appStateRef.current.match(/inactive|background/) && nextState === 'active') {
+      if (
+        appStateRef.current.match(/inactive|background/) &&
+        nextState === 'active'
+      ) {
         await checkAndRequestLocation();
       }
       appStateRef.current = nextState;
     });
-
     return () => subscription.remove();
   }, [checkAndRequestLocation]);
 
   // ── Initial call on mount ─────────────────────────────────────────────────
   useEffect(() => {
     checkAndRequestLocation();
-
-    // Cleanup watcher on unmount — prevents memory leaks
     return () => {
-      if (watcherRef.current) {
-        watcherRef.current.remove();
-      }
+      clearTimeout(timeoutRef.current);
+      if (watcherRef.current) watcherRef.current.remove();
     };
   }, [checkAndRequestLocation]);
 
-  // ── Derived State ─────────────────────────────────────────────────────────
-  // locationBlocked = true means show the full-screen blocker UI
+  // locationBlocked = true → render the full-screen blocker, not the map
   const locationBlocked =
     !isLoading &&
     (locationServicesEnabled === false || permissionStatus !== 'granted');
@@ -124,6 +124,6 @@ export const useLocation = () => {
     permissionStatus,
     error,
     isLoading,
-    retry: checkAndRequestLocation, // expose retry so the blocker screen can have a "Try Again" button
+    retry: checkAndRequestLocation,
   };
 };
