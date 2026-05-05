@@ -4,26 +4,38 @@
 
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const Header = memo(({ highCount, mediumCount, lowCount, userLocation }) => (
-  <View style={styles.container}>
+const Header = memo(({ highCount, mediumCount, lowCount, userLocation }) => {
+  const insets = useSafeAreaInsets();
+  
+  return (
+  <View style={[styles.container, { paddingTop: Math.max(insets.top, 20) + 10 }]}>
     <View style={styles.left}>
-      <Text style={styles.appName}>📍 CrowdMap</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+        <Ionicons name="location" size={20} color="#6366F1" />
+        <Text style={styles.appName}>CrowdMap</Text>
+      </View>
       <Text style={styles.subtitle}>Live Crowd Intelligence</Text>
     </View>
     <View style={styles.pills}>
       <View style={[styles.pill, { backgroundColor: 'rgba(255,59,48,0.15)', borderColor: '#FF3B30' }]}>
-        <Text style={[styles.pillText, { color: '#FF3B30' }]}>🔴 {highCount}</Text>
+        <Ionicons name="ellipse" size={8} color="#FF3B30" />
+        <Text style={[styles.pillText, { color: '#FF3B30' }]}>{highCount}</Text>
       </View>
       <View style={[styles.pill, { backgroundColor: 'rgba(255,159,10,0.15)', borderColor: '#FF9F0A' }]}>
-        <Text style={[styles.pillText, { color: '#FF9F0A' }]}>🟡 {mediumCount}</Text>
+        <Ionicons name="ellipse" size={8} color="#FF9F0A" />
+        <Text style={[styles.pillText, { color: '#FF9F0A' }]}>{mediumCount}</Text>
       </View>
       <View style={[styles.pill, { backgroundColor: 'rgba(48,209,88,0.15)', borderColor: '#30D158' }]}>
-        <Text style={[styles.pillText, { color: '#30D158' }]}>🟢 {lowCount}</Text>
+        <Ionicons name="ellipse" size={8} color="#30D158" />
+        <Text style={[styles.pillText, { color: '#30D158' }]}>{lowCount}</Text>
       </View>
     </View>
   </View>
-));
+  );
+});
 
 export default Header;
 
@@ -33,7 +45,6 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    paddingTop: 52,
     paddingHorizontal: 16,
     paddingBottom: 14,
     backgroundColor: 'rgba(7,7,20,0.85)',
@@ -62,8 +73,11 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   pill: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 20,
     borderWidth: 1,
   },

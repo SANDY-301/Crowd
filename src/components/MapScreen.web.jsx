@@ -32,7 +32,6 @@ const createCustomIcon = (density) => {
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 50 50" width="50" height="50">
       <circle cx="25" cy="25" r="22" fill="${config.glow}" stroke="${config.glow}" stroke-width="2" opacity="0.4" />
       <circle cx="25" cy="25" r="16" fill="${config.color}" />
-      <text x="25" y="30" font-size="14" text-anchor="middle" fill="white">${config.emoji}</text>
     </svg>
   `;
   return L.icon({

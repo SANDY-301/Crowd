@@ -8,6 +8,7 @@
 import React, { useEffect, useRef, memo } from 'react';
 import { View, Text, Animated, Easing, StyleSheet, Dimensions } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { Ionicons } from '@expo/vector-icons';
 
 const { width } = Dimensions.get('window');
 
@@ -67,7 +68,7 @@ const LoadingScreen = memo(() => {
 
       {/* Logo */}
       <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }] }]}>
-        <Text style={styles.logoEmoji}>📍</Text>
+        <Ionicons name="location" size={44} color="#6366F1" />
       </Animated.View>
 
       <Text style={styles.appName}>Where is the Crowd</Text>
@@ -115,9 +116,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 20,
-  },
-  logoEmoji: {
-    fontSize: 44,
   },
   appName: {
     fontSize: 26,
