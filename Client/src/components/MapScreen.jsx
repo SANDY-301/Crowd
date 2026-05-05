@@ -15,12 +15,13 @@
  * react-native-maps 1.20.1 on Expo SDK 54. Using native MapView directly.
  */
 
-import React, { useState, useMemo, useCallback, memo, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import React, { useState, useMemo, useCallback, memo, useRef, useEffect } from 'react';
+import { View, StyleSheet, Platform } from 'react-native';
 import MapView, { PROVIDER_DEFAULT, Circle, UrlTile, Marker } from 'react-native-maps';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 
-import { generateCrowdData, DENSITY } from '../data/mockData';
+import { DENSITY } from '../data/mockData';
 import CrowdMarker from './CrowdMarker';
 import VenueDetailSheet from './VenueDetailSheet';
 import Header from './Header';
@@ -35,9 +36,42 @@ const INITIAL_REGION = {
   longitudeDelta: 0.25,
 };
 
+const hostUri = Constants.expoConfig?.hostUri;
+const localIp = hostUri ? hostUri.split(':')[0] : '10.0.2.2';
+const API_URL = Platform.OS === 'web' ? 'http://localhost:5000' : `http://${localIp}:5000`;
+
 const MapScreen = memo(({ userLocation }) => {
-  // Generate data ONCE — useMemo ensures no re-computation on re-renders
-  const crowdData = useMemo(() => generateCrowdData(), []);
+  const [crowdData, setCrowdData] = useState([]);
+
+  // Fetch Live Data from Backend every 10 seconds
+  const fetchLiveCrowds = useCallback(async () => {
+    try {
+      const res = await fetch(`${API_URL}/api/crowds`);
+      const json = await res.json();
+      if (json.success) {
+        // Map backend generic data to our UI format
+        const mapped = json.data.map((user) => ({
+          id: user.id,
+          name: 'Active App User',
+          coordinate: { latitude: user.latitude, longitude: user.longitude },
+          density: DENSITY.LOW, // 1 person
+          crowdCount: 1,
+          type: 'leisure',
+          lastUpdated: user.lastUpdated,
+          prediction: 'Real-time location data',
+        }));
+        setCrowdData(mapped);
+      }
+    } catch (e) {
+      console.log('Error fetching live crowds:', e.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchLiveCrowds(); // Initial fetch
+    const interval = setInterval(fetchLiveCrowds, 10000); // Poll every 10s
+    return () => clearInterval(interval);
+  }, [fetchLiveCrowds]);
 
   const mapRef = useRef(null);
 
@@ -62,7 +96,7 @@ const MapScreen = memo(({ userLocation }) => {
 
     setGlobalMarker(null);
     setSelectedVenue(venue);
-    
+
     // Pan map to venue when selected
     if (mapRef.current) {
       mapRef.current.animateToRegion({
@@ -80,9 +114,9 @@ const MapScreen = memo(({ userLocation }) => {
 
   // Derived counts — computed once, not inside child components
   const { highCount, mediumCount, lowCount } = useMemo(() => ({
-    highCount:   crowdData.filter(v => v.density === DENSITY.HIGH).length,
+    highCount: crowdData.filter(v => v.density === DENSITY.HIGH).length,
     mediumCount: crowdData.filter(v => v.density === DENSITY.MEDIUM).length,
-    lowCount:    crowdData.filter(v => v.density === DENSITY.LOW).length,
+    lowCount: crowdData.filter(v => v.density === DENSITY.LOW).length,
   }), [crowdData]);
 
   // Center map on user's live location if available, else use Chennai

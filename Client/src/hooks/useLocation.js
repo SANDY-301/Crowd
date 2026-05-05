@@ -11,7 +11,32 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import * as Location from 'expo-location';
-import { AppState } from 'react-native';
+import { AppState, Platform } from 'react-native';
+import Constants from 'expo-constants';
+
+// Simple UUID for this session
+const SESSION_ID = Math.random().toString(36).substring(2, 15);
+
+// Dynamically get the laptop's local IP address so it works on physical phones too!
+const hostUri = Constants.expoConfig?.hostUri;
+const localIp = hostUri ? hostUri.split(':')[0] : '10.0.2.2';
+const API_URL = Platform.OS === 'web' ? 'http://localhost:5000' : `http://${localIp}:5000`;
+
+const pushLocationToBackend = async (coords) => {
+  try {
+    await fetch(`${API_URL}/api/location`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: SESSION_ID,
+        latitude: coords.latitude,
+        longitude: coords.longitude,
+      })
+    });
+  } catch (err) {
+    console.log('Backend sync error (Is Node server running?):', err.message);
+  }
+};
 
 export const useLocation = () => {
   const [location, setLocation] = useState(null);
@@ -68,6 +93,7 @@ export const useLocation = () => {
         accuracy: Location.Accuracy.Balanced,
       });
       setLocation(currentPos.coords);
+      pushLocationToBackend(currentPos.coords);
 
       // 4) Start continuous watcher (10m distance filter → battery friendly)
       if (watcherRef.current) {
@@ -79,7 +105,10 @@ export const useLocation = () => {
           distanceInterval: 10,
           timeInterval: 5000,
         },
-        (pos) => setLocation(pos.coords)
+        (pos) => {
+          setLocation(pos.coords);
+          pushLocationToBackend(pos.coords);
+        }
       );
     } catch (err) {
       setError(err.message || 'Location error occurred');
